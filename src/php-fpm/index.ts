@@ -12,7 +12,7 @@ import fastCgi = require("fastcgi-client");
 import { Readable } from "node:stream";
 import { FpmStreamReader } from "./fpmStreamReader";
 
-export interface PhpFpmUserOptions {
+export interface PhpFpmOptions {
     readonly host?: string;
     readonly port?: number;
     readonly sockFile?: string;
@@ -20,28 +20,24 @@ export interface PhpFpmUserOptions {
     readonly skipCheckServer?: boolean;
 }
 
-export interface PhpFpmCustomParams {
+export interface PhpFpmInvocationParams {
     readonly uri?: string;
     readonly document?: string;
     readonly query?: string;
     readonly script?: string;
 }
 
-interface PhpFpmFullParams extends PhpFpmCustomParams {
-    document?: string;
-    query?: string;
-    script?: string;
-}
-
-const defaultOptions: PhpFpmUserOptions = {
+const defaultOptions: PhpFpmOptions = {
     host: "127.0.0.1",
     port: 9000,
     documentRoot: path.dirname(require.main?.filename || "."),
     skipCheckServer: true
 }
 
-export function phpFpm(userOptions?: PhpFpmUserOptions, customParams?: PhpFpmCustomParams): (ctx: Koa.Context, onError: (err: string) => void) => Promise<void> {
-    const options: PhpFpmUserOptions = {
+type Writable<T> = { -readonly [P in keyof T ]: T[P] };
+
+export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError: (err: string) => void, customParams?: PhpFpmInvocationParams) => Promise<void> {
+    const options: PhpFpmOptions = {
         ...defaultOptions,
         ...userOptions
     };
@@ -52,10 +48,10 @@ export function phpFpm(userOptions?: PhpFpmUserOptions, customParams?: PhpFpmCus
         loader.on("error", reject);
     })
 
-    return async function (ctx, onError) {
+    return async function (ctx, onError, customParams): Promise<void> {
         const req = ctx.req;
 
-        const params: PhpFpmFullParams = {
+        const params: Writable<PhpFpmInvocationParams> = {
             ...customParams,
             uri: req.url
         };

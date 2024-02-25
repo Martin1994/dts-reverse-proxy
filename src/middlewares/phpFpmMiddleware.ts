@@ -2,42 +2,45 @@ import Koa = require("koa");
 import serve = require("koa-static");
 import { phpFpm as rawPhpFpm } from "../php-fpm";
 import { access, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
-export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Koa.Middleware = (userOptions, customParameters) => {
+const LOG_SPLITTER = "----------------";
+
+export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Koa.Middleware = (userOptions) => {
     const root = userOptions?.documentRoot ?? process.cwd();
     userOptions ??= {
         documentRoot: root
     };
-    const php = rawPhpFpm(userOptions, customParameters);
+    const php = rawPhpFpm(userOptions);
     const statics = serve(userOptions?.documentRoot ?? process.cwd());
 
     return async (ctx, next) => {
         const path = join(root, ctx.path);
         if (ctx.path.endsWith(".php")) {
+            let shouldPhp = true;
             try {
                 await access(path);
             } catch {
-                await statics(ctx, next);
-                return;
+                shouldPhp = false;
             }
 
-            try {
-                ctx.status = 200;
-                await php(ctx, err => {
-                    console.warn(`[${new Date().toISOString()}] Got PHP error from ${ctx.url}`);
-                    console.warn(err);
-                    console.warn("----------------");
-                });
-            } catch (e) {
-                console.error(`[${new Date().toISOString()}] Got PHP FPM error from ${ctx.url}`);
-                console.error(e);
-                console.error("----------------");
-                ctx.status = 500;
-                ctx.body = "Internal server error";
+            if (shouldPhp) {
+                try {
+                    ctx.status = 200;
+                    await php(ctx, err => {
+                        console.warn(`[${new Date().toISOString()}] Got PHP error from ${ctx.url}`);
+                        console.warn(err);
+                        console.warn(LOG_SPLITTER);
+                    });
+                } catch (e) {
+                    console.error(`[${new Date().toISOString()}] Got PHP FPM error from ${ctx.url}`);
+                    console.error(e);
+                    console.error(LOG_SPLITTER);
+                    ctx.status = 500;
+                    ctx.body = "Internal server error";
+                }
                 return;
             }
-            return;
         }
 
         await statics(ctx, next);
@@ -47,9 +50,22 @@ export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Koa.Middleware =
                 const s = await stat(path);
                 if (s.isDirectory()) {
                     await access(join(path, "index.php"));
-                    ctx.redirect("index.php")
+                    ctx.redirect("index.php");
                     return;
                 }
+            } catch {
+            }
+
+            try {
+                const candidate404Script = join(dirname(path), "404.php");
+                await access(candidate404Script);
+                await php(ctx, err => {
+                    console.warn(`[${new Date().toISOString()}] Got PHP error from ${ctx.url} (404)`);
+                    console.warn(err);
+                    console.warn(LOG_SPLITTER);
+                }, { script: candidate404Script });
+                ctx.status = 404;
+                return;
             } catch {
             }
         }

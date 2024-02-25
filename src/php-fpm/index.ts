@@ -6,9 +6,11 @@
  *     Copyright (c) 2017 Ivan Filho - https://www.ivanfilho.com/
  */
 
+import Koa = require("koa");
 import path = require("node:path");
 import fastCgi = require("fastcgi-client");
-import { IncomingMessage, ServerResponse } from "node:http";
+import { Readable } from "node:stream";
+import { FpmStreamReader } from "./fpmStreamReader";
 
 export interface PhpFpmUserOptions {
     readonly host?: string;
@@ -38,7 +40,7 @@ const defaultOptions: PhpFpmUserOptions = {
     skipCheckServer: true
 }
 
-export function phpFpm(userOptions?: PhpFpmUserOptions, customParams?: PhpFpmCustomParams): (req: IncomingMessage, res: ServerResponse<IncomingMessage>) => Promise<void> {
+export function phpFpm(userOptions?: PhpFpmUserOptions, customParams?: PhpFpmCustomParams): (ctx: Koa.Context, onError: (err: string) => void) => Promise<void> {
     const options: PhpFpmUserOptions = {
         ...defaultOptions,
         ...userOptions
@@ -50,8 +52,10 @@ export function phpFpm(userOptions?: PhpFpmUserOptions, customParams?: PhpFpmCus
         loader.on("error", reject);
     })
 
-    return async function (req, res) {
-        let params: PhpFpmFullParams = {
+    return async function (ctx, onError) {
+        const req = ctx.req;
+
+        const params: PhpFpmFullParams = {
             ...customParams,
             uri: req.url
         };
@@ -121,56 +125,58 @@ export function phpFpm(userOptions?: PhpFpmUserOptions, customParams?: PhpFpmCus
 
         const php = await fpm;
         return new Promise(function (resolve, reject) {
-            php.request(headers, function (err, request) {
-                if (err) { return reject(err) }
-                var output = "";
-                var errors = "";
+            php.request(headers, async function (err, request) {
+                if (err) {
+                    return reject(err);
+                }
 
                 req.pipe(request.stdin);
 
-                request.stdout.on("data", function (data: Buffer) {
-                    output += data.toString("utf8");
-                })
+                await Promise.all([
+                    readStdOut(request.stdout, ctx),
+                    readStdErr(request.stderr, onError)
+                ]);
 
-                request.stderr.on("data", function (data: Buffer) {
-                    errors += data.toString("utf8");
-                })
-
-                request.stdout.on("end", function () {
-                    if (errors) { return reject(new Error(errors)) }
-
-                    const head = output.match(/^[\s\S]*?\r\n\r\n/)![0]
-                    const parseHead = head.split("\r\n").filter(_ => _)
-                    const responseHeaders: Record<string, string | string[]> = {}
-                    let statusCode = 200
-                    let statusMessage = ""
-
-                    for (const item of parseHead) {
-                        const pair = item.split(": ")
-
-                        if (pair.length > 1 && pair[0] && pair[1]) {
-                            if (Array.isArray(responseHeaders[pair[0]])) {
-                                (responseHeaders[pair[0]] as string[]).push(pair[1]);
-                            } else {
-                                responseHeaders[pair[0]] = [pair[1]];
-                            }
-
-                            if (pair[0] === "Status") {
-                                const match = pair[1].match(/(\d+) (.*)/);
-                                statusCode = parseInt(match![1]);
-                                statusMessage = match![2];
-                            }
-                        }
-                    }
-
-                    res.writeHead(statusCode, statusMessage, responseHeaders);
-                    const body = output.slice(head.length);
-                    res.write(body);
-                    res.end();
-
-                    resolve();
-                })
+                resolve();
             })
         })
     }
+}
+
+async function readStdOut(stdout: Readable, ctx: Koa.Context): Promise<void> {
+    const reader = new FpmStreamReader(stdout);
+    for await (const header of reader.readHeaders()) {
+        ctx.response.append(header[0], header[1]);
+
+        if (header[0] === "Status") {
+            const match = header[1].match(/(\d+) (.*)/);
+            if (match) {
+                ctx.status = parseInt(match[1]);
+                ctx.message = match[2];
+            }
+        }
+    }
+
+    ctx.body = reader;
+}
+
+async function readStdErr(stderr: Readable, onError: (error: string) => void): Promise<void> {
+    const chunks = [];
+
+    stderr.setEncoding("utf-8");
+    for await (const chunk of stderr) {
+        chunks.push(Buffer.from(chunk));
+    }
+
+    if (chunks.length === 0) {
+        return;
+    }
+
+    const err = chunks.join("");
+
+    if (err.length === 0) {
+        return;
+    }
+
+    onError(err);
 }

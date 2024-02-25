@@ -24,14 +24,18 @@ export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Koa.Middleware =
 
             try {
                 ctx.status = 200;
-                await php(ctx.req, new PhpResponseProxy(ctx) as never);
+                await php(ctx, err => {
+                    console.warn(`[${new Date().toISOString()}] Got PHP error from ${ctx.url}`);
+                    console.warn(err);
+                    console.warn("----------------");
+                });
             } catch (e) {
-                console.error(`Got error from ${ctx.url}`);
+                console.error(`[${new Date().toISOString()}] Got PHP FPM error from ${ctx.url}`);
                 console.error(e);
                 console.error("----------------");
-                ctx.res.statusCode = 500;
-                ctx.res.write("Internal server error\n");
-                ctx.res.end(`${e}`);
+                ctx.status = 500;
+                ctx.message = "Internal server error";
+                return;
             }
             return;
         }
@@ -52,26 +56,3 @@ export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Koa.Middleware =
 
     };
 };
-
-class PhpResponseProxy {
-    readonly #ctx: Koa.ParameterizedContext;
-
-    public constructor(ctx: Koa.ParameterizedContext) {
-        this.#ctx = ctx;
-    }
-
-    public writeHead(statusCode: number, statusMessage: string, responseHeaders: Record<string, string>) {
-        this.#ctx.status = statusCode;
-        this.#ctx.message = statusMessage;
-        for (const [name, value] of Object.entries(responseHeaders)) {
-            this.#ctx.response.append(name, value);
-        }
-    }
-
-    public write(content: string) {
-        this.#ctx.response.body = content; // node-php-fpm always only write once
-    }
-
-    public end() {
-    }
-}

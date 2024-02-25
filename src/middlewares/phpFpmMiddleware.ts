@@ -34,7 +34,7 @@ export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Koa.Middleware =
                 console.error(e);
                 console.error("----------------");
                 ctx.status = 500;
-                ctx.message = "Internal server error";
+                ctx.body = "Internal server error";
                 return;
             }
             return;

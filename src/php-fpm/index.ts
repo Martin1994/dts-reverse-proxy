@@ -152,7 +152,9 @@ async function readStdOut(stdout: Readable, ctx: Koa.Context): Promise<void> {
             const match = header[1].match(/(\d+) (.*)/);
             if (match) {
                 ctx.status = parseInt(match[1]);
-                ctx.message = match[2];
+                if (ctx.req.httpVersionMajor < 2) {
+                    ctx.message = match[2];
+                }
             }
         }
     }

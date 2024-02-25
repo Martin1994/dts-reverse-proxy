@@ -1,0 +1,24 @@
+{
+    "name": "dts-reversed-proxy",
+    "version": "1.0.0",
+    "private": "true",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc -p .",
+        "test": "echo OK."
+    },
+    "author": "",
+    "license": "N/A",
+    "devDependencies": {
+        "@tsconfig/node20": "^20.1.2",
+        "@types/koa": "^2.15.0",
+        "@types/koa-static": "^4.0.4",
+        "@types/node": "^20.11.20",
+        "typescript": "^5.3.3"
+    },
+    "dependencies": {
+        "koa": "^2.15.0",
+        "koa-static": "^5.0.0",
+        "php-fpm": "^1.1.0"
+    }
+}

@@ -7,8 +7,8 @@
         "build": "tsc -p .",
         "test": "echo OK."
     },
-    "author": "",
-    "license": "N/A",
+    "author": "Martin Chloride <i@martincl2.me>",
+    "license": "MIT",
     "devDependencies": {
         "@tsconfig/node20": "^20.1.2",
         "@types/koa": "^2.15.0",
@@ -17,8 +17,8 @@
         "typescript": "^5.3.3"
     },
     "dependencies": {
+        "fastcgi-client": "^0.0.1",
         "koa": "^2.15.0",
-        "koa-static": "^5.0.0",
-        "php-fpm": "^1.1.0"
+        "koa-static": "^5.0.0"
     }
 }

@@ -1,6 +1,6 @@
 import Koa = require("koa");
 import serve = require("koa-static");
-import rawPhpFpm = require("php-fpm");
+import { phpFpm as rawPhpFpm } from "../php-fpm";
 import { access, stat } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -60,12 +60,12 @@ class PhpResponseProxy {
         this.#ctx = ctx;
     }
 
-    public setHeader(name: string, value: string) {
-        this.#ctx.response.append(name, value);
-    }
-
-    public set statusCode(value: number) {
-        this.#ctx.response.status = value;
+    public writeHead(statusCode: number, statusMessage: string, responseHeaders: Record<string, string>) {
+        this.#ctx.status = statusCode;
+        this.#ctx.message = statusMessage;
+        for (const [name, value] of Object.entries(responseHeaders)) {
+            this.#ctx.response.append(name, value);
+        }
     }
 
     public write(content: string) {

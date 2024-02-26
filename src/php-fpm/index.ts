@@ -138,19 +138,41 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError:
 }
 
 async function readStdOut(stdout: Readable, ctx: Koa.Context): Promise<void> {
-    const reader = new FpmStreamReader(stdout);
-    for await (const header of reader.readHeaders()) {
-        ctx.response.append(header[0], header[1]);
+    // Uncomment the following lines when debugging wire protocol
+    // ctx.status = 200;
+    // ctx.body = stdout;
+    // ctx.type = 'text/plain; charset=utf-8';
 
-        if (header[0] === "Status") {
-            const match = header[1].match(/(\d+) (.*)/);
-            if (match) {
-                ctx.status = parseInt(match[1]);
-                if (ctx.req.httpVersionMajor < 2) {
-                    ctx.message = match[2];
+    const reader = new FpmStreamReader(stdout);
+    let sawContentType = false;
+    for await (const header of reader.readHeaders()) {
+        switch (header[0].toLowerCase()) {
+            case "Status":
+            case "status":
+                const match = header[1].match(/(\d+) (.*)/);
+                if (match) {
+                    ctx.status = parseInt(match[1]);
+                    if (ctx.req.httpVersionMajor < 2) {
+                        ctx.message = match[2];
+                    }
                 }
-            }
+                break;
+
+            case "Content-Type":
+            case "Content-type":
+            case "content-type":
+                sawContentType = true;
+                ctx.response.type = header[1];
+                break;
+
+            default:
+                ctx.response.append(header[0], header[1]);
+                break;
         }
+    }
+
+    if (!sawContentType) {
+        ctx.type = 'text/plain; charset=utf-8';
     }
 
     ctx.body = reader;

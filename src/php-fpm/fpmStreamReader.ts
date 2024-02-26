@@ -32,26 +32,26 @@ export class FpmStreamReader extends Readable {
             if (state === HeaderState.CR && value.length > 0 && value.charAt(0) === "\n") {
                 chunks.push("\n");
                 const header = makeHeader(chunks);
+                cutStart = 1;
                 if (!header) {
-                    this.push(value.substring(1));
+                    this.push(value.substring(cutStart));
                     return;
                 }
                 yield header;
                 chunks = [];
-                cutStart = 1;
             }
 
             for (let i = value.indexOf("\r"); i !== -1; i = value.indexOf("\r", i + 1)) {
                 if (value.charAt(i + 1) === "\n") {
                     chunks.push(value.substring(cutStart, i + 2));
                     const header = makeHeader(chunks);
+                    cutStart = i + 2;
                     if (!header) {
                         this.push(value.substring(cutStart));
                         return;
                     }
                     yield header;
                     chunks = [];
-                    cutStart = i + 2;
                 }
             }
 

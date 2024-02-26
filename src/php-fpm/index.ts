@@ -128,10 +128,8 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError:
 
                 req.pipe(request.stdin);
 
-                await Promise.all([
-                    readStdOut(request.stdout, ctx),
-                    readStdErr(request.stderr, onError)
-                ]);
+                void readStdErr(request.stderr, onError);
+                await readStdOut(request.stdout, ctx);
 
                 resolve();
             })

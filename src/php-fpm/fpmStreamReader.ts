@@ -5,19 +5,21 @@ const enum HeaderState {
     CR
 }
 
+const CR = "\r".charCodeAt(0);
+const LF = "\n".charCodeAt(0);
+
 export class FpmStreamReader extends Readable {
 
-    readonly #stdout: AsyncIterator<string>;
+    readonly #stdout: AsyncIterator<Buffer>;
 
     constructor (stdout: Readable) {
         super();
-        stdout.setEncoding("utf-8");
         this.#stdout = stdout[Symbol.asyncIterator]();
     }
 
     public async *readHeaders(): AsyncIterable<[string, string]> {
         let state: HeaderState = HeaderState.ANY;
-        let chunks: string[] = [];
+        let chunks: Buffer[] = [];
 
         while (true) {
             const result = await this.#stdout.next();
@@ -29,25 +31,25 @@ export class FpmStreamReader extends Readable {
             const value = result.value;
             let cutStart = 0;
 
-            if (state === HeaderState.CR && value.length > 0 && value.charAt(0) === "\n") {
-                chunks.push("\n");
+            if (state === HeaderState.CR && value.length > 0 && value[0] === LF) {
+                chunks.push(value.subarray(0, 1));
                 const header = makeHeader(chunks);
                 cutStart = 1;
                 if (!header) {
-                    this.push(value.substring(cutStart));
+                    this.push(value.subarray(cutStart));
                     return;
                 }
                 yield header;
                 chunks = [];
             }
 
-            for (let i = value.indexOf("\r"); i !== -1; i = value.indexOf("\r", i + 1)) {
-                if (value.charAt(i + 1) === "\n") {
-                    chunks.push(value.substring(cutStart, i + 2));
+            for (let i = value.indexOf(CR); i !== -1; i = value.indexOf(CR, i + 1)) {
+                if (value[i + 1] === LF) {
+                    chunks.push(value.subarray(cutStart, i + 2));
                     const header = makeHeader(chunks);
                     cutStart = i + 2;
                     if (!header) {
-                        this.push(value.substring(cutStart));
+                        this.push(value.subarray(cutStart));
                         return;
                     }
                     yield header;
@@ -55,7 +57,7 @@ export class FpmStreamReader extends Readable {
                 }
             }
 
-            state = value.charAt(value.length - 1) === "\r" ? HeaderState.CR : HeaderState.ANY;
+            state = value[value.length - 1] === CR ? HeaderState.CR : HeaderState.ANY;
         }
     }
 
@@ -70,8 +72,8 @@ export class FpmStreamReader extends Readable {
     }
 }
 
-function makeHeader(chunks: string[]): [string, string] | undefined {
-    const line = chunks.length === 1 ? chunks[0] : chunks.join("");
+function makeHeader(chunks: Buffer[]): [string, string] | undefined {
+    const line = Buffer.concat(chunks).toString("utf-8");
     if (line === "\r\n") {
         return undefined;
     }

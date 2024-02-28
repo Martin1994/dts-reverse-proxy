@@ -40,7 +40,7 @@ async function main() {
         "127.0.0.1": dtsPhp,
         "localhost": dtsPhp,
         "blog.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/martin-blog" })
-    }, []));
+    }, TLS_DOMAINS));
 
     // HTTP server
 

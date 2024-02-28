@@ -5,8 +5,9 @@ import { createSecureServer } from "node:http2";
 import { userInfo } from "node:os";
 import { SecureContext, createSecureContext } from "node:tls";
 import { domainRouter } from "./middlewares/domainRouterMiddleware";
+import { serverTimingCloudWatchMetric } from "./middlewares/headerCloudWatchMetricMiddleware";
 import { phpFpm } from "./middlewares/phpFpmMiddleware";
-import { serverTiming } from "./middlewares/serverTimingMiddleware";
+import { totalServerTiming } from "./middlewares/serverTimingMiddleware";
 import { PHP_CONFIG } from "./phpConfig";
 
 async function main() {
@@ -18,7 +19,15 @@ async function main() {
 
     const TLS_DOMAINS = isRoot ? ["thbr.martincl2.me", "dts.martincl2.me", "001.dianbo.me"] : [];
 
-    app.use(serverTiming());
+    if (isRoot) {
+        app.use(serverTimingCloudWatchMetric([
+            "thbr.martincl2.me",
+            ["dts.martincl2.me", "001.dianbo.me"],
+            "001.dianbo.me"
+        ]));
+    }
+
+    app.use(totalServerTiming());
 
     app.use(domainRouter({
         "thbr.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/thbr" }),

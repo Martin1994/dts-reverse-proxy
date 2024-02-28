@@ -17,6 +17,7 @@
         "typescript": "^5.3.3"
     },
     "dependencies": {
+        "@aws-sdk/client-cloudwatch": "^3.523.0",
         "fastcgi-client": "^0.0.1",
         "koa": "^2.15.0",
         "koa-static": "^5.0.0"

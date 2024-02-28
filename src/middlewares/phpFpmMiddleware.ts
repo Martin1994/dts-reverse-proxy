@@ -1,12 +1,12 @@
-import Koa = require("koa");
-import serve = require("koa-static");
-import { phpFpm as rawPhpFpm } from "../php-fpm";
+import { Middleware } from "koa";
 import { access, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { phpFpm as rawPhpFpm } from "../php-fpm";
+import serve = require("koa-static");
 
 const LOG_SPLITTER = "----------------";
 
-export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Koa.Middleware = (userOptions) => {
+export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Middleware = (userOptions) => {
     const root = userOptions?.documentRoot ?? process.cwd();
     userOptions ??= {
         documentRoot: root

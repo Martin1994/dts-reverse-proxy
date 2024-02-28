@@ -1,9 +1,9 @@
-import Koa = require("koa");
+import { Middleware } from "koa";
 import serve = require("koa-static");
 
 const defaultStatic = serve("/var/www/html");
 
-export const domainRouter: (routes: Record<string, Koa.Middleware>, tlsRedirectDomains?: string[]) => Koa.Middleware = (routes, tlsRedirectDomains) => {
+export const domainRouter: (routes: Record<string, Middleware>, tlsRedirectDomains?: string[]) => Middleware = (routes, tlsRedirectDomains) => {
     tlsRedirectDomains ??= [];
     const redirectTls = Object.fromEntries(tlsRedirectDomains.map(d => [d, true]));
 

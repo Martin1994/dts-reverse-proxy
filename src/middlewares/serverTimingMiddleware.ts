@@ -1,6 +1,6 @@
-import Koa = require("koa");
+import { Middleware } from "koa";
 
-export const serverTiming: () => Koa.Middleware = () => {
+export const totalServerTiming: () => Middleware = () => {
     return async (ctx, next) => {
         const start = performance.now();
         await next();

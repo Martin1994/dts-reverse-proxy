@@ -49,8 +49,12 @@ export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Middleware = (us
             try {
                 const s = await stat(path);
                 if (s.isDirectory()) {
+                    if (!ctx.URL.pathname.endsWith("/")) {
+                        ctx.redirect(ctx.URL.pathname + "/");
+                        return;
+                    }
                     await access(join(path, "index.php"));
-                    ctx.redirect("index.php");
+                    ctx.redirect("./index.php");
                     return;
                 }
             } catch {

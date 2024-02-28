@@ -17,25 +17,30 @@ async function main() {
     const httpPort = isRoot ? 80 : 8080;
     const httpsPort = isRoot ? 443 : 8443;
 
-    const TLS_DOMAINS = isRoot ? ["thbr.martincl2.me", "dts.martincl2.me", "001.dianbo.me"] : [];
+    const TLS_DOMAINS = isRoot ? ["thbr.martincl2.me", "brn.martincl2.me", "dts.martincl2.me", "001.dianbo.me", "blog.martincl2.me"] : [];
 
     if (isRoot) {
         app.use(serverTimingCloudWatchMetric([
             "thbr.martincl2.me",
+            "brn.martincl2.me",
             ["dts.martincl2.me", "001.dianbo.me"],
-            "001.dianbo.me"
+            "001.dianbo.me",
+            "blog.martincl2.me"
         ]));
     }
 
     app.use(totalServerTiming());
 
+    const dtsPhp = phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/dts" });
     app.use(domainRouter({
         "thbr.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/thbr" }),
-        "dts.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/dts" }),
-        "001.dianbo.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/dts" }),
-        "127.0.0.1": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/dts" }),
-        "localhost": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/dts" }),
-    }, TLS_DOMAINS));
+        "brn.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/brn" }),
+        "dts.martincl2.me": dtsPhp,
+        "001.dianbo.me": dtsPhp,
+        "127.0.0.1": dtsPhp,
+        "localhost": dtsPhp,
+        "blog.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/martin-blog" })
+    }, []));
 
     // HTTP server
 

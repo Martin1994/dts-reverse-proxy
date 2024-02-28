@@ -107,6 +107,7 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError:
             REMOTE_ADDR: req.socket.remoteAddress,
             REMOTE_PORT: req.socket.remotePort,
             SERVER_NAME: ctx.hostname,
+            HTTP_HOST: ctx.hostname,
             SERVER_PROTOCOL: "HTTP/1.1",
             GATEWAY_INTERFACE: "CGI/1.1",
             SERVER_SOFTWARE: "DTS HTTP",

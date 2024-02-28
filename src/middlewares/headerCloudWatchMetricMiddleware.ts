@@ -102,6 +102,10 @@ class CloudWatchAgent {
                 this.#buckets.set(id, []);
             }
 
+            if (metricData.length === 0) {
+                continue;
+            }
+
             try {
                 await this.#cloudwatch.send(new PutMetricDataCommand({
                     Namespace: this.#namespace,

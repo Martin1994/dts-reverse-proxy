@@ -83,10 +83,12 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError:
             params.query = params.uri
                 .slice(params.document.length + 1)
                 .replace(/\?/g, "&")
+        } else {
+            params.document = params.uri;
         }
 
         if (!params.script) {
-            params.script = path.posix.join(options.documentRoot!, params.document || params.uri)
+            params.script = path.posix.join(options.documentRoot!, params.document)
         }
 
         const headers: Record<string, string | string[] | number | undefined> = {
@@ -96,9 +98,9 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError:
             CONTENT_DISPOSITION: req.headers["content-disposition"],
             DOCUMENT_ROOT: options.documentRoot,
             SCRIPT_FILENAME: params.script,
-            SCRIPT_NAME: params.script.split("/").pop(),
+            SCRIPT_NAME: params.document,
             REQUEST_URI: params.uri,
-            DOCUMENT_URI: params.document || params.uri,
+            DOCUMENT_URI: params.document, // PATH_INFO is not supported as of now
             QUERY_STRING: params.query,
             REQUEST_SCHEME: (req as never)["protocol"],
             HTTPS: (req as never)["protocol"] === "https" ? "on" : undefined,
@@ -107,7 +109,7 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError:
             SERVER_NAME: req.headers.host,
             SERVER_PROTOCOL: "HTTP/1.1",
             GATEWAY_INTERFACE: "CGI/1.1",
-            SERVER_SOFTWARE: "php-fpm for Node",
+            SERVER_SOFTWARE: "DTS HTTP",
             REDIRECT_STATUS: 200
         }
 

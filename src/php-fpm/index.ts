@@ -174,11 +174,11 @@ async function readStdOut(stdout: Readable, ctx: Koa.Context): Promise<void> {
         }
     }
 
-    if (!sawContentType) {
-        ctx.type = 'text/plain; charset=utf-8';
-    }
-
     ctx.body = reader;
+
+    if (!sawContentType) {
+        ctx.type = "";
+    }
 }
 
 async function readStdErr(stderr: Readable, onError: (error: string) => void): Promise<void> {

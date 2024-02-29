@@ -7,6 +7,8 @@ import { SecureContext, createSecureContext } from "node:tls";
 import { domainRouter } from "./middlewares/domainRouterMiddleware";
 import { serverTimingCloudWatchMetric } from "./middlewares/headerCloudWatchMetricMiddleware";
 import { phpFpm, rewrite404, rewriteAbsolute } from "./middlewares/phpFpmMiddleware";
+import { redirectHostname } from "./middlewares/redirectHostnameMiddleware";
+import { redirectTls } from "./middlewares/redirectTlsMiddleware";
 import { totalServerTiming } from "./middlewares/serverTimingMiddleware";
 import { PHP_CONFIG } from "./phpConfig";
 
@@ -32,17 +34,18 @@ async function main() {
 
     app.use(totalServerTiming());
 
+    app.use(redirectTls(TLS_DOMAINS))
+
     const dtsPhp = phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/dts" });
     app.use(domainRouter({
         "thbr.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/thbr" }, rewrite404("404.php")),
         "brn.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/brn" }, rewrite404("404.php")),
-        "dts.martincl2.me": dtsPhp,
+        "dts.martincl2.me": redirectHostname("001.dianbo.me"),
         "001.dianbo.me": dtsPhp,
+        "127.0.1.1": dtsPhp, // DTS loopback
         "002.dianbo.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/jouban" }),
-        "127.0.0.1": dtsPhp,
-        "localhost": dtsPhp,
         "blog.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/martin-blog" }, rewriteAbsolute("index.php"))
-    }, TLS_DOMAINS));
+    }, ));
 
     // HTTP server
 

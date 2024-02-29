@@ -6,11 +6,11 @@
  *     Copyright (c) 2017 Ivan Filho - https://www.ivanfilho.com/
  */
 
-import Koa = require("koa");
-import path = require("node:path");
-import fastCgi = require("fastcgi-client");
+import { Context } from "koa";
 import { Readable } from "node:stream";
 import { FpmStreamReader } from "./fpmStreamReader";
+import path = require("node:path");
+import fastCgi = require("fastcgi-client");
 
 export interface PhpFpmOptions {
     readonly host?: string;
@@ -36,7 +36,7 @@ const defaultOptions: PhpFpmOptions = {
 
 type Writable<T> = { -readonly [P in keyof T ]: T[P] };
 
-export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError: (err: string) => void, customParams?: PhpFpmInvocationParams) => Promise<void> {
+export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Context, onError: (err: string) => void, customParams?: PhpFpmInvocationParams) => Promise<void> {
     const options: PhpFpmOptions = {
         ...defaultOptions,
         ...userOptions
@@ -60,31 +60,13 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError:
             throw new Error("invalid uri")
         }
 
-        // if (options.rewrite) {
-        //     const rules = Array.isArray(options.rewrite)
-        //         ? options.rewrite : [options.rewrite]
-        //     for (const rule of rules) {
-        //         const match = params.uri.match(rule.search || /.*/)
-        //         if (match) {
-        //             let result = rule.replace
-        //             for (const index in match) {
-        //                 const selector = new RegExp(`\\$${index}`, "g")
-        //                 result = result.replace(selector, match[index])
-        //             }
-        //             params.outerUri = params.uri
-        //             params.uri = result
-        //             break
-        //         }
-        //     }
-        // }
-
         if (params.uri.indexOf("?") !== -1) {
-            params.document = params.uri.split("?")[0]
+            params.document ??= params.uri.split("?")[0]
             params.query = params.uri
                 .slice(params.document.length + 1)
                 .replace(/\?/g, "&")
         } else {
-            params.document = params.uri;
+            params.document ??= params.uri;
         }
 
         if (!params.script) {
@@ -140,7 +122,7 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Koa.Context, onError:
     }
 }
 
-async function readStdOut(stdout: Readable, ctx: Koa.Context): Promise<void> {
+async function readStdOut(stdout: Readable, ctx: Context): Promise<void> {
     // Uncomment the following lines when debugging wire protocol
     // ctx.status = 200;
     // ctx.body = stdout;

@@ -1,18 +1,21 @@
 import { Context, Middleware } from "koa";
 import { access, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { PhpFpmInvocationParams, phpFpm as rawPhpFpm } from "../php-fpm";
+import { PhpFpmInvocationParams, PhpFpmOptions, phpFpm as rawPhpFpm } from "../php-fpm";
 import serve = require("koa-static");
 
 const LOG_SPLITTER = "----------------";
 
-export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Middleware = (userOptions) => {
-    const root = userOptions?.documentRoot ?? process.cwd();
-    userOptions ??= {
+export type PhpRewriteLogic = (ctx: Context, php: PhpInvoker, root: string) => Promise<void>;
+type PhpInvoker = (ctx: Context, params?: PhpFpmInvocationParams) => Promise<void>;
+
+export const phpFpm: (phpOptions: PhpFpmOptions, rewrite?: PhpRewriteLogic) => Middleware = (phpOptions, rewrite) => {
+    const root = phpOptions?.documentRoot ?? process.cwd();
+    phpOptions ??= {
         documentRoot: root
     };
-    const php = rawPhpFpm(userOptions);
-    const safePhp = async (ctx: Context, params?: PhpFpmInvocationParams): Promise<void> => {
+    const php = rawPhpFpm(phpOptions);
+    const safePhp: PhpInvoker = async (ctx: Context, params?: PhpFpmInvocationParams): Promise<void> => {
         try {
             ctx.status = 200;
             await php(ctx, err => {
@@ -28,7 +31,7 @@ export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Middleware = (us
             ctx.body = "Internal server error";
         }
     }
-    const statics = serve(userOptions?.documentRoot ?? process.cwd());
+    const statics = serve(phpOptions?.documentRoot ?? process.cwd());
 
     return async (ctx, next) => {
         const path = join(root, ctx.path);
@@ -36,11 +39,9 @@ export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Middleware = (us
         try {
             targetStat = await stat(path);
         } catch {
-            await next(); // 404
-            return;
         }
 
-        if (targetStat.isDirectory()) {
+        if (targetStat && targetStat.isDirectory()) {
             try {
                 if (!ctx.URL.pathname.endsWith("/")) {
                     ctx.redirect(ctx.URL.pathname + "/");
@@ -54,23 +55,43 @@ export const phpFpm: (...args: Parameters<typeof rawPhpFpm>) => Middleware = (us
                 return;
             } catch {
             }
-        } else if (ctx.path.endsWith(".php")) {
+        } else if (targetStat && ctx.path.endsWith(".php")) {
             await safePhp(ctx);
             return;
         }
 
-        await statics(ctx, next);
+        if (targetStat) {
+            await statics(ctx, next);
+            return;
+        }
 
-        if (ctx.status === 404) {
-            try {
-                const candidate404Script = join(dirname(path), "404.php");
-                await access(candidate404Script);
-                await safePhp(ctx, { script: candidate404Script });
-                ctx.status = 404;
-                return;
-            } catch {
-            }
+        // 404
+        if (rewrite) {
+            await rewrite(ctx, safePhp, root);
         }
 
     };
 };
+
+export function rewrite404(filename: string): PhpRewriteLogic {
+    return async (ctx, php, root) => {
+        const path = join(root, ctx.path);
+        try {
+            const candidate404Script = join(dirname(path), filename);
+            await access(candidate404Script);
+            await php(ctx, { script: candidate404Script });
+            ctx.status = 404;
+            return;
+        } catch {
+        }
+    }
+}
+
+export function rewriteAbsolute(filename: string): PhpRewriteLogic {
+    return async (ctx, php, root) => {
+        await php(ctx, {
+            script: join(root, filename),
+            document: `/${filename}${ctx.url}`
+        });
+    }
+}

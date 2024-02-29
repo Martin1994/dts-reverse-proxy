@@ -60,11 +60,10 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Context, onError: (er
             throw new Error("invalid uri")
         }
 
-        if (params.uri.indexOf("?") !== -1) {
-            params.document ??= params.uri.split("?")[0]
-            params.query = params.uri
-                .slice(params.document.length + 1)
-                .replace(/\?/g, "&")
+        const queryStart = params.uri.indexOf("?");
+        if (queryStart !== -1) {
+            params.document ??= params.uri.substring(0, queryStart);
+            params.query = params.uri.substring(queryStart + 1);
         } else {
             params.document ??= params.uri;
         }

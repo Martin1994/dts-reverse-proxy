@@ -44,7 +44,7 @@ async function main() {
         "001.dianbo.me": dtsPhp,
         "127.0.1.1": dtsPhp, // DTS loopback
         "002.dianbo.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/jouban" }),
-        "blog.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/martin-blog" }, rewriteAbsolute("index.php"))
+        "blog.martincl2.me": phpFpm({ ...PHP_CONFIG, documentRoot: "/var/www/martin-blog" }, rewriteAbsolute("index.php")),
     }, ));
 
     // HTTP server

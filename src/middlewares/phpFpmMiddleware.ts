@@ -31,7 +31,9 @@ export const phpFpm: (phpOptions: PhpFpmOptions, rewrite?: PhpRewriteLogic) => M
             ctx.body = "Internal server error";
         }
     }
-    const statics = serve(phpOptions?.documentRoot ?? process.cwd());
+    const statics = serve(phpOptions?.documentRoot ?? process.cwd(), {
+        maxAge: 600_000
+    });
 
     return async (ctx, next) => {
         const path = join(root, ctx.path);

@@ -25,7 +25,6 @@ async function main() {
         app.use(serverTimingCloudWatchMetric([
             "thbr.martincl2.me",
             "brn.martincl2.me",
-            ["dts.martincl2.me", "001.dianbo.me"],
             "001.dianbo.me",
             "002.dianbo.me",
             "blog.martincl2.me"

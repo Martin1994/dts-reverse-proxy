@@ -57,7 +57,7 @@ export function phpFpm(userOptions?: PhpFpmOptions): (ctx: Context, onError: (er
         };
 
         if (!params.uri || !params.uri.startsWith("/")) {
-            throw new Error("invalid uri")
+            throw new Error("invalid uri");
         }
 
         const queryStart = params.uri.indexOf("?");

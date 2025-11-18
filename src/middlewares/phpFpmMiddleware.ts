@@ -19,12 +19,12 @@ export const phpFpm: (phpOptions: PhpFpmOptions, rewrite?: PhpRewriteLogic) => M
         try {
             ctx.status = 200;
             await php(ctx, err => {
-                console.warn(`[${new Date().toISOString()}] Got PHP error from ${ctx.url}`);
+                console.warn(`[${new Date().toISOString()}] Got PHP error from ${ctx.URL.toString()}`);
                 console.warn(err);
                 console.warn(LOG_SPLITTER);
             }, params);
         } catch (e) {
-            console.error(`[${new Date().toISOString()}] Got PHP FPM error from ${ctx.url}`);
+            console.error(`[${new Date().toISOString()}] Got PHP FPM error from ${ctx.URL.toString()}`);
             console.error(e);
             console.error(LOG_SPLITTER);
             ctx.status = 500;
